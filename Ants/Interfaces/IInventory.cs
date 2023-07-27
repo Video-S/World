@@ -4,7 +4,7 @@ namespace Ants
 {
 	public interface IInventory
 	{
-		public List<IPickUp> Inventory
+		public Queue<IPickUp> Inventory
 		{
 			get;
 		}
@@ -17,12 +17,12 @@ namespace Ants
 
 		public void AddToInventory(IPickUp item)
 		{
-			Inventory.Add(item);
+			Inventory.Enqueue(item);
 		}
 
 		public void RemoveFromInventory(IPickUp item)
 		{
-			Inventory.Remove(item);
+			Inventory.Dequeue();
 		}
 	}
 }

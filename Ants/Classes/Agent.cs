@@ -15,7 +15,7 @@ namespace Ants
             if (this.inventory.Count > 0 && this.resources <= 1000)
             {
                 resources = resources + 100;
-                this.inventory.RemoveAt(this.inventory.Count - 1);
+                this.inventory.Dequeue();
             }
             if (resources <= 0)
             {
@@ -34,6 +34,7 @@ namespace Ants
                         return;
                     }
                 }
+
                 for(int i = this.GetPos.x - 1; i <= this.GetPos.x + 1; i++)
                 {
                     if (i < 0 || i > this.GetWorld.GetSize.x - 1) continue;
@@ -48,9 +49,9 @@ namespace Ants
             }
         }
 
-        private List<IPickUp> inventory = new List<IPickUp>();
+        private Queue<IPickUp> inventory = new Queue<IPickUp>();
 
-        public List<IPickUp> Inventory
+        public Queue<IPickUp> Inventory
         {
             get
             {
@@ -62,12 +63,12 @@ namespace Ants
 
         public void AddToInventory(IPickUp item)
         {
-            inventory.Add(item);
+            inventory.Enqueue(item);
         }
 
         public void RemoveFromInventory(IPickUp item)
         {
-            inventory.Remove(item);
+            inventory.Dequeue();
         }
 
         private void Move(GameObject? target)

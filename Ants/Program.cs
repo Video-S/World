@@ -13,7 +13,7 @@ class Program
 {
     static void Main(string[] args)
     {
-        World world = new World(61, 261);
+        World world = new World(41, 141);
 
         _ = new Agent(20, 5, world);
 
@@ -66,7 +66,7 @@ class Program
         while (true)
         {
             world.Next();
-            //Thread.Sleep(60);
+            Thread.Sleep(60);
             //Console.ReadKey();
         }
     }
