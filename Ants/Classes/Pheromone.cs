@@ -3,7 +3,7 @@ namespace Ants
 {
     public class Pheromone : GameObject, IDynamicObject
     {
-        private int fullTimer = 100;
+        private int fullTimer = 15;
         public int Timer;
         private bool markedForDel = false;
         public Pheromone(World world, int y, int x) : base(world, y, x)
@@ -30,7 +30,6 @@ namespace Ants
             {
                 this.Timer = this.fullTimer;
                 this.tile = '.';
-                this.interestRating = 0.5F;
                 this.GetWorld.AddDynamicObject(this);
                 this.GetWorld.SetCell(this, y, x);
             }

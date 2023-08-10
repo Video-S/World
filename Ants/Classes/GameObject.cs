@@ -22,8 +22,9 @@ namespace Ants
         public ConsoleColor GetColor => this.color;
         public ConsoleColor SetColor { set { this.color = value; } }
 
-        protected float interestRating = 0.0F;
-        public float InterestRating => interestRating;
+        protected ConsoleColor bgColor = ConsoleColor.Black;
+        public ConsoleColor GetBGColor => this.bgColor;
+        public ConsoleColor SetBGColor { set { this.bgColor = value; } }
 
         protected bool isBlocker = false;
         public bool IsBlocker => isBlocker;
@@ -37,10 +38,17 @@ namespace Ants
             idCount++;
         }
 
+        public GameObject ShallowCopy()
+        {
+            return (GameObject)this.MemberwiseClone();
+        }
+
         public void ToConsole()
         {
             Console.ForegroundColor = this.color;
+            Console.BackgroundColor = this.bgColor;
             Console.Write($"{this.tile}");
+            Console.BackgroundColor = ConsoleColor.Black;
             Console.ForegroundColor = ConsoleColor.Gray;
         }
     }

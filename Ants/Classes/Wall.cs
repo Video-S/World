@@ -5,7 +5,8 @@ namespace Ants
     {
         public Wall(World world, int y, int x) : base(world, y, x)
         {
-            this.tile = '*';
+            this.tile = ' ';
+            this.bgColor = ConsoleColor.DarkGray;
             this.isBlocker = true;
             this.GetWorld.SetCell(this, y, x);
         }

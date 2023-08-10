@@ -3,18 +3,31 @@ namespace Ants
 {
     public class Agent : GameObject, IDynamicObject, IInventory
     {
-        private (int dy, int dx) currentDirection = (0, 0);
         private Random r = new Random();
-        private bool markedForDel = false;
 
-        private int resources;
+        private (int dy, int dx) currentDirection = (0, 0);
 
+        protected virtual void SpawnNewInstance(int y, int x)
+        {
+            _ = new Agent(y, x, this.GetWorld);
+        }
+
+        protected virtual void SpawnTrail(int y, int x)
+        {
+            _ = new Floor(this.GetWorld, y, x);
+        }
+
+        protected int resources = 601;
+        protected int resourceBaseLine = 1000;
+        protected int resourcesFromEating = 100;
+        protected int reproductionCost = 200;
+        protected int livingCost = 5;
         private void reproduce()
         {
-            resources = resources - 5;
-            if (this.inventory.Count > 0 && this.resources <= 1000)
+            resources = resources - livingCost;
+            if (this.inventory.Count > 0 && this.resources <= resourceBaseLine)
             {
-                resources = resources + 100;
+                resources = resources + resourcesFromEating;
                 this.inventory.Dequeue();
             }
             if (resources <= 0)
@@ -22,35 +35,37 @@ namespace Ants
                 _ = new Floor(this.GetWorld, this.GetPos.y, this.GetPos.x);
                 this.markedForDel = true;
             }
-            if (resources > 1000)
+            if (resources > resourceBaseLine)
             {
-                for(int i = this.GetPos.y - 1; i <= this.GetPos.y + 1; i++)
+                for (int i = this.GetPos.y - 1; i <= this.GetPos.y + 1; i++)
                 {
                     if (i < 0 || i > this.GetWorld.GetSize.y - 1) continue;
                     if (GetWorld.GetCell(i, this.GetPos.x) is Floor || GetWorld.GetCell(i, this.GetPos.x) is Pheromone)
                     {
-                        _ = new Agent(this.GetPos.y, this.GetPos.x, this.GetWorld);
-                        this.resources = resources - 200;
+                        this.SpawnNewInstance(this.GetPos.y, this.GetPos.x);
+                        this.resources = resources - reproductionCost;
                         return;
                     }
                 }
 
-                for(int i = this.GetPos.x - 1; i <= this.GetPos.x + 1; i++)
+                for (int i = this.GetPos.x - 1; i <= this.GetPos.x + 1; i++)
                 {
                     if (i < 0 || i > this.GetWorld.GetSize.x - 1) continue;
                     if (this.GetWorld.GetCell(this.GetPos.y, i) is Floor || GetWorld.GetCell(this.GetPos.y, i) is Pheromone)
                     {
-                        _ = new Agent(this.GetPos.y, this.GetPos.x, this.GetWorld);
+                        this.SpawnNewInstance(this.GetPos.y, this.GetPos.x);
                         this.resources = resources - 200;
                         return;
                     }
                 }
-                
+
             }
         }
 
-        private Queue<IPickUp> inventory = new Queue<IPickUp>();
+        private bool markedForDel = false;
+        bool IDynamicObject.MarkedForDel { get => markedForDel; set => markedForDel = value; }
 
+        private Queue<IPickUp> inventory = new Queue<IPickUp>();
         public Queue<IPickUp> Inventory
         {
             get
@@ -58,14 +73,11 @@ namespace Ants
                 return inventory;
             }
         }
-
-        bool IDynamicObject.MarkedForDel { get => markedForDel; set => markedForDel = value; }
-
         public void AddToInventory(IPickUp item)
         {
             inventory.Enqueue(item);
+            item.pickUp(this);
         }
-
         public void RemoveFromInventory(IPickUp item)
         {
             inventory.Dequeue();
@@ -112,23 +124,29 @@ namespace Ants
             // Handle out of bounds
             (y, x) = this.GetWorld.HandleBounds(y, x);
 
+            // Check if new pos is a pickup and interesting
+            bool isInteresting = this.interests.Any((item) =>
+            {
+                return this.GetWorld.GetCell(y, x).GetType() == item.type;
+            });
+
+            if (this.GetWorld.GetCell(y, x) is IPickUp && isInteresting)
+            {
+                this.AddToInventory((IPickUp)this.GetWorld.GetCell(y, x));
+                this.GetWorld.SetCell(new Floor(this.GetWorld, y, x), y, x);
+            }
+
             // Handle blocked cells
             (y, x, dy, dx) = this.GetWorld.HandleBlocked(y, x, dy, dx);
 
             // Handle out of bounds... AGAIN
             (y, x) = this.GetWorld.HandleBounds(y, x);
 
-            // Check if new pos is a pickup
-            if(this.GetWorld.GetCell(y, x) is IPickUp)
-            {
-                this.AddToInventory((IPickUp)this.GetWorld.GetCell(y, x));
-            }
-
             // Update agent on map
             this.GetWorld.SetCell(this, y, x);
 
             // Clear agent on map.
-            _ = new Pheromone(this.GetWorld, this.GetPos.y, this.GetPos.x);
+            this.SpawnTrail(this.GetPos.y, this.GetPos.x);
 
             // Set new agent pos
             this.SetPos = (y, x);
@@ -153,28 +171,39 @@ namespace Ants
             }
         }
 
+        private List<(Type type, float rating)> interests = new List<(Type type, float rating)>();
+        public List<(Type type, float rating)> GetInterests => this.interests;
+        public void AddInterest((Type type, float rating) interest)
+        {
+            interests.Add(interest);
+        }
         private GameObject? Think(List<GameObject> options)
         {
             if (options.Count == 0) return null;
-            
-            // Determine highest interest rating
-            float highestInterest = 0F;
-            foreach (var option in options)
+
+            // Get all options with highest interest rating
+            float highestRating = 0;
+            GameObject highestRated = null;
+            foreach(GameObject option in options)
             {
-                if (option.InterestRating > highestInterest)
+                Type type = option.GetType();
+                (Type type, float rating) item = interests.Find((item) =>
                 {
-                    highestInterest = option.InterestRating;
+                    return item.type == type;
+                });
+                if (item.rating > highestRating)
+                {
+                    highestRating = item.rating;
+                    highestRated = option;
                 }
             }
 
-            // Select all options with highest interest rating
-            options = options.FindAll
-            (
-                delegate (GameObject obj)
-                {
-                    return obj.InterestRating == highestInterest;
-                }
-            );
+            if (highestRated == null) return null;
+
+            options = options.FindAll((GameObject option) =>
+            {
+                return option.GetType() == highestRated.GetType();
+            });
 
             // Always take closest?
             int closestSum = int.MaxValue;
@@ -201,7 +230,8 @@ namespace Ants
             return closestGO;
         }
 
-        private List<GameObject> Look(int range)
+        protected int range = 3;
+        private List<GameObject> Look()
         {
             List<GameObject> targets = new List<GameObject>();
             (int y, int x) agentDir = this.currentDirection;
@@ -209,38 +239,41 @@ namespace Ants
 
             if (agentDir.y != 0)
             {
-                for (int y = (agentY + agentDir.y); Math.Abs(y - (agentY + agentDir.y)) < range; y += agentDir.y)
+                for (int x = agentX - 1; x <= agentX + 1; x++)
                 {
-                    for (int x = agentX - 1; x <= agentX + 1; x++)
+                    for (int y = (agentY + agentDir.y); Math.Abs(y - (agentY + agentDir.y)) < this.range; y += agentDir.y) 
                     {
-                        if (y < 0 || y >= GetWorld.GetSize.y) continue;
-                        if (x < 0 || x >= GetWorld.GetSize.x) continue;
+                        int boundedY = y;
+                        int boundedX = x;
 
-                        _ = new DebugVision(this.GetWorld, y, x);
-                        GameObject obj = this.GetWorld.GetCell(y, x);
-                        if (obj is Resource || obj is Pheromone)
-                        {
-                            targets.Add(obj);
-                        }
+                        if (y < 0 || y >= GetWorld.GetSize.y) (boundedY, boundedX) = this.GetWorld.HandleBounds(y, x);
+                        if (x < 0 || x >= GetWorld.GetSize.x) (boundedY, boundedX) = this.GetWorld.HandleBounds(y, x);
+
+                        GameObject obj = this.GetWorld.GetCell(boundedY, boundedX);
+                        targets.Add(obj);
+                        //_ = new DebugVision(this.GetWorld, boundedY, boundedX);
+                        if (obj.IsBlocker) break;                        
                     }
                 }
             }
 
             if (agentDir.x != 0)
             {
-                for (int x = (agentX + agentDir.x); Math.Abs(x - (agentX + agentDir.x)) < range; x += agentDir.x)
+                for (int y = agentY - 1; y <= agentY + 1; y++)
                 {
-                    for (int y = agentY - 1; y <= agentY + 1; y++)
+                    for (int x = (agentX + agentDir.x); Math.Abs(x - (agentX + agentDir.x)) < range; x += agentDir.x) 
                     {
-                        if (y < 0 || y >= GetWorld.GetSize.y) continue;
-                        if (x < 0 || x >= GetWorld.GetSize.x) continue;
+                        int boundedY = y;
+                        int boundedX = x;
 
-                        _ = new DebugVision(this.GetWorld, y, x);
-                        GameObject obj = this.GetWorld.GetCell(y, x);
-                        if (obj is Resource || obj is Pheromone)
-                        {
-                            targets.Add(obj);
-                        }
+                        if (y < 0 || y >= GetWorld.GetSize.y) (boundedY, boundedX) = this.GetWorld.HandleBounds(y, x);
+                        if (x < 0 || x >= GetWorld.GetSize.x) (boundedY, boundedX) = this.GetWorld.HandleBounds(y, x);
+
+                        GameObject obj = this.GetWorld.GetCell(boundedY, boundedX);
+                        targets.Add(obj);
+                        //_ = new DebugVision(this.GetWorld, boundedY, boundedX);
+                        if (obj.IsBlocker) break;                       
+
                     }
                 }
             }
@@ -250,16 +283,16 @@ namespace Ants
 
         void IDynamicObject.Run()
         {
-            this.Move(this.Think(this.Look(4)));
+            this.Move(this.Think(this.Look()));
             this.reproduce();
         }
 
         public Agent(int y, int x, World world) : base(world, y, x)
         {
             this.tile = 'A';
-            this.currentDirection = (-1, 0);
+            this.currentDirection = (new Random().Next(-1, 2), new Random().Next(-1, 2));
+            this.color = ConsoleColor.Gray;
             this.isBlocker = true;
-            this.resources = 601;
 
             world.SetCell(this, y, x);
             world.AddDynamicObject(this);

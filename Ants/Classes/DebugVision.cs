@@ -1,6 +1,8 @@
 ﻿using System;
 namespace Ants
 {
+	// TODO: DebugVision depends on references. No longer works that way.
+	// Perhaps I should work within the console changes list, and add and remove things there
 	public class DebugVision: GameObject, IDynamicObject
 	{
 		private int fullTimer = 1;
@@ -30,12 +32,12 @@ namespace Ants
 			else
 			{
                 this.Timer = this.fullTimer;
-                this.color = ConsoleColor.DarkCyan;
+                this.bgColor = ConsoleColor.DarkCyan;
                 this.target = world.GetCell(y, x);
-                this.targetOrgColor = target.GetColor;
-                this.target.SetColor = this.color;
+                this.targetOrgColor = target.GetBGColor;
+                this.target.SetBGColor = this.bgColor;
                 world.AddDynamicObject(this);
-				world.AddConsoleChange(y, x);
+				world.AddConsoleChange(target, y, x);
             }
 		}
 
@@ -45,9 +47,9 @@ namespace Ants
         {
             if (this.Timer == 0)
 			{
-				target.SetColor = targetOrgColor;
+				target.SetBGColor = targetOrgColor;
 				this.markedForDel = true;
-				this.GetWorld.AddConsoleChange(this.GetPos.y, this.GetPos.x);
+				this.GetWorld.AddConsoleChange(target, this.GetPos.y, this.GetPos.x);
             }
             this.Timer--;
         }

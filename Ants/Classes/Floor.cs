@@ -5,8 +5,7 @@ namespace Ants
     {
         public Floor(World world, int y, int x) : base(world, y, x)
         {
-            this.tile = '.';
-            this.interestRating = 0F;
+            this.tile = ' ';
             this.color = ConsoleColor.DarkGray;
             this.GetWorld.SetCell(this, y, x);
         }
